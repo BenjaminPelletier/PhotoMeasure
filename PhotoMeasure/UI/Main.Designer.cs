@@ -45,15 +45,16 @@
             this.calibrateFromCheckerboardImagesToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.sceneToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.solveToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.debugToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.setAzpiEl0ToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.ofdProject = new System.Windows.Forms.OpenFileDialog();
             this.sfdProject = new System.Windows.Forms.SaveFileDialog();
             this.ilImages = new PhotoMeasure.UI.ImageList();
             this.flFeatures = new PhotoMeasure.UI.FeatureList();
             this.clConstraints = new PhotoMeasure.UI.Constraints.ConstraintList();
             this.ivImageView = new PhotoMeasure.UI.ImageViews();
+            this.sstSceneControl = new PhotoMeasure.UI.Scenes.SceneSolveTracker();
             this.svPreview = new PhotoMeasure.UI.Scenes.SceneView();
-            this.debugToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
-            this.setAzpiEl0ToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             ((System.ComponentModel.ISupportInitialize)(this.splitContainer1)).BeginInit();
             this.splitContainer1.Panel1.SuspendLayout();
             this.splitContainer1.Panel2.SuspendLayout();
@@ -182,6 +183,7 @@
             // 
             // splitContainer3.Panel2
             // 
+            this.splitContainer3.Panel2.Controls.Add(this.sstSceneControl);
             this.splitContainer3.Panel2.Controls.Add(this.svPreview);
             this.splitContainer3.Size = new System.Drawing.Size(894, 582);
             this.splitContainer3.SplitterDistance = 575;
@@ -269,6 +271,21 @@
             this.solveToolStripMenuItem.Text = "&Solve";
             this.solveToolStripMenuItem.Click += new System.EventHandler(this.solveToolStripMenuItem_Click);
             // 
+            // debugToolStripMenuItem
+            // 
+            this.debugToolStripMenuItem.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
+            this.setAzpiEl0ToolStripMenuItem});
+            this.debugToolStripMenuItem.Name = "debugToolStripMenuItem";
+            this.debugToolStripMenuItem.Size = new System.Drawing.Size(54, 20);
+            this.debugToolStripMenuItem.Text = "Debug";
+            // 
+            // setAzpiEl0ToolStripMenuItem
+            // 
+            this.setAzpiEl0ToolStripMenuItem.Name = "setAzpiEl0ToolStripMenuItem";
+            this.setAzpiEl0ToolStripMenuItem.Size = new System.Drawing.Size(151, 22);
+            this.setAzpiEl0ToolStripMenuItem.Text = "Set az=pi, el=0";
+            this.setAzpiEl0ToolStripMenuItem.Click += new System.EventHandler(this.setAzpiEl0ToolStripMenuItem_Click);
+            // 
             // ofdProject
             // 
             this.ofdProject.DefaultExt = "pmp";
@@ -328,6 +345,16 @@
             this.ivImageView.NextFeatureRequested += new System.EventHandler(this.ivImageView_NextFeatureRequested);
             this.ivImageView.NewFeature += new System.EventHandler<PhotoMeasure.UI.PrimaryImageEditor.NewFeatureEventArgs>(this.ivImageView_NewFeature);
             // 
+            // sstSceneControl
+            // 
+            this.sstSceneControl.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left) 
+            | System.Windows.Forms.AnchorStyles.Right)));
+            this.sstSceneControl.Location = new System.Drawing.Point(3, 556);
+            this.sstSceneControl.Name = "sstSceneControl";
+            this.sstSceneControl.Size = new System.Drawing.Size(309, 23);
+            this.sstSceneControl.TabIndex = 1;
+            this.sstSceneControl.SceneChanged += new System.EventHandler<PhotoMeasure.UI.Scenes.LocatedSceneEventArgs>(this.sstSceneControl_SceneChanged);
+            // 
             // svPreview
             // 
             this.svPreview.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
@@ -337,24 +364,9 @@
             this.svPreview.FieldOfViewVertical = 1.0471975511965976D;
             this.svPreview.Location = new System.Drawing.Point(3, 3);
             this.svPreview.Name = "svPreview";
-            this.svPreview.Size = new System.Drawing.Size(309, 576);
+            this.svPreview.Size = new System.Drawing.Size(309, 547);
             this.svPreview.TabIndex = 0;
             this.svPreview.VSync = false;
-            // 
-            // debugToolStripMenuItem
-            // 
-            this.debugToolStripMenuItem.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
-            this.setAzpiEl0ToolStripMenuItem});
-            this.debugToolStripMenuItem.Name = "debugToolStripMenuItem";
-            this.debugToolStripMenuItem.Size = new System.Drawing.Size(54, 20);
-            this.debugToolStripMenuItem.Text = "Debug";
-            // 
-            // setAzpiEl0ToolStripMenuItem
-            // 
-            this.setAzpiEl0ToolStripMenuItem.Name = "setAzpiEl0ToolStripMenuItem";
-            this.setAzpiEl0ToolStripMenuItem.Size = new System.Drawing.Size(152, 22);
-            this.setAzpiEl0ToolStripMenuItem.Text = "Set az=pi, el=0";
-            this.setAzpiEl0ToolStripMenuItem.Click += new System.EventHandler(this.setAzpiEl0ToolStripMenuItem_Click);
             // 
             // Main
             // 
@@ -419,6 +431,7 @@
         private Scenes.SceneView svPreview;
         private System.Windows.Forms.ToolStripMenuItem debugToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem setAzpiEl0ToolStripMenuItem;
+        private Scenes.SceneSolveTracker sstSceneControl;
     }
 }
 

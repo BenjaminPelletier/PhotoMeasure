@@ -37,6 +37,17 @@ namespace Easy3D.Projection
             return result;
         }
 
+        public static T TakeOne<T>(this IEnumerator<T> enumerator)
+        {
+            enumerator.MoveNext();
+            return enumerator.Current;
+        }
+
+        public static Vector3d TakeVector3d(this IEnumerator<double> enumerator)
+        {
+            return new Vector3d(enumerator.TakeOne(), enumerator.TakeOne(), enumerator.TakeOne());
+        }
+
         public static double[] ToArray(this Vec3d v)
         {
             return new double[] { v.Item0, v.Item1, v.Item2 };

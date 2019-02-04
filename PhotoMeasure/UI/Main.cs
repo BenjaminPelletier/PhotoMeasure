@@ -4,6 +4,7 @@ using Easy3D.Projection;
 using Easy3D.Scenes;
 using Easy3D.Scenes.Features;
 using EasySerialization.Json;
+using PhotoMeasure.UI.Scenes;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -106,32 +107,7 @@ namespace PhotoMeasure.UI
 
         private void solveToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            var loader = new BackgroundWorker();
-            Scene scene = GetScene();
-            LocatedScene locatedScene = null;
-            loader.DoWork += (s, w) =>
-            {
-                var solver = new NelderMead();
-
-                solver.SimplexIteration += (solverSender, iterationArgs) =>
-                {
-                    loader.ReportProgress(
-                        (100 * iterationArgs.FunctionCount) / solver.MaximumFunctionEvaluations,
-                        $"Error: {iterationArgs.Error:f2} pixels decreasing at {iterationArgs.dF:f5}, {iterationArgs.FunctionCount} evaluations");
-                    iterationArgs.Cancel = w.Cancel;
-                };
-
-                locatedScene = Solver.Solve(scene, solver);
-            };
-
-            var progress = new ProgressDialog(loader, "Solving scene");
-            if (progress.ShowDialog(this) == DialogResult.Abort)
-            {
-                MessageBox.Show(this, "Aborted");
-                return;
-            }
-
-            svPreview.Scene = locatedScene;
+            sstSceneControl.StartSolving(GetScene());
         }
 
         private void flFeatures_FeaturesChanged(object sender, EventArgs e)
@@ -155,6 +131,11 @@ namespace PhotoMeasure.UI
         private void setAzpiEl0ToolStripMenuItem_Click(object sender, EventArgs e)
         {
             svPreview.SetAzEl(Math.PI, 0);
+        }
+
+        private void sstSceneControl_SceneChanged(object sender, LocatedSceneEventArgs e)
+        {
+            svPreview.Scene = e.LocatedScene;
         }
     }
 }

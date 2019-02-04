@@ -13,53 +13,63 @@ namespace Easy3D.Numerics
     /// <remarks></remarks>
     public class NelderMead
     {
-        /// <summary>
-        /// Reflection coefficient: determines how far across the center of the simplex the worst point is reflected to perform a new function evaluation
-        /// Reasonable range: (0, Infinity)
-        /// A value of 0 moves the worst point to the center of the remaining simplex every reflection step
-        /// A value of less than 1 performs a contraction concurrently with every reflection step
-        /// A value of 1 performs a standard reflection of the worst point to the other side of the remaining simplex
-        /// A value of greater than 1 performs an expansion concurrently with every reflection step
-        /// </summary>
-        public double Alpha = 1;
+        public class Configuration
+        {
+            /// <summary>
+            /// Reflection coefficient: determines how far across the center of the simplex the worst point is reflected to perform a new function evaluation
+            /// Reasonable range: (0, Infinity)
+            /// A value of 0 moves the worst point to the center of the remaining simplex every reflection step
+            /// A value of less than 1 performs a contraction concurrently with every reflection step
+            /// A value of 1 performs a standard reflection of the worst point to the other side of the remaining simplex
+            /// A value of greater than 1 performs an expansion concurrently with every reflection step
+            /// </summary>
+            public double Alpha = 1;
 
-        /// <summary>
-        /// Expansion coefficient: determines how far across the center of the simplex the worst point is reflected when the standard reflection yields the lowest function value yet
-        /// Reasonable range: [1, Infinity)
-        /// A value of 1 performs no additional expansion beyond a simple reflection when a desirable direction is discovered
-        /// </summary>
-        public double Gamma = 2;
+            /// <summary>
+            /// Expansion coefficient: determines how far across the center of the simplex the worst point is reflected when the standard reflection yields the lowest function value yet
+            /// Reasonable range: [1, Infinity)
+            /// A value of 1 performs no additional expansion beyond a simple reflection when a desirable direction is discovered
+            /// </summary>
+            public double Gamma = 2;
 
-        /// <summary>
-        /// Contraction coefficient: determines how far across the center of the simplex the worst point is reflected when the standard reflection does not yield the lowest function value yet
-        /// Reasonable range: (-1, 0)
-        /// A value of -1 leaves the worst simplex point where it is during a contraction step
-        /// A value of 0 moves the worst simplex point to the center of the remaining simplex during a contraction operation
-        /// </summary>
-        public double Rho = -0.5;
+            /// <summary>
+            /// Contraction coefficient: determines how far across the center of the simplex the worst point is reflected when the standard reflection does not yield the lowest function value yet
+            /// Reasonable range: (-1, 0)
+            /// A value of -1 leaves the worst simplex point where it is during a contraction step
+            /// A value of 0 moves the worst simplex point to the center of the remaining simplex during a contraction operation
+            /// </summary>
+            public double Rho = -0.5;
 
-        /// <summary>
-        /// Reduction coefficient: determines how far away from the best point all other points are moved when standard reflection and contraction both fail to produce a function value lower than the worst function value
-        /// Reasonable range: (0, 1)
-        /// A value of 0 forces all simplex points to the best point in one reduction step
-        /// A value of 1 leaves all simplex points unchanged during the reduction operation
-        /// </summary>
-        public double Sigma = 0.5;
+            /// <summary>
+            /// Reduction coefficient: determines how far away from the best point all other points are moved when standard reflection and contraction both fail to produce a function value lower than the worst function value
+            /// Reasonable range: (0, 1)
+            /// A value of 0 forces all simplex points to the best point in one reduction step
+            /// A value of 1 leaves all simplex points unchanged during the reduction operation
+            /// </summary>
+            public double Sigma = 0.5;
 
-        /// <summary>
-        /// Approximate maximum number of times the fitness function may be evaluated before the optimization will terminate
-        /// </summary>
-        public int MaximumFunctionEvaluations = 10000;
+            /// <summary>
+            /// Approximate maximum number of times the fitness function may be evaluated before the optimization will terminate
+            /// </summary>
+            public int MaximumFunctionEvaluations = 10000;
 
-        /// <summary>
-        /// When a simplex iteration leads to a change in the fitness function smaller than this value, the optimization will terminate
-        /// </summary>
-        public double ConvergenceTolerance = 1E-06;
+            /// <summary>
+            /// When a simplex iteration leads to a change in the fitness function smaller than this value, the optimization will terminate
+            /// </summary>
+            public double ConvergenceTolerance = 1E-06;
 
-        /// <summary>
-        /// How often the SimplexIteration event should be called.
-        /// </summary>
-        public TimeSpan UpdatePeriod = TimeSpan.FromSeconds(1);
+            /// <summary>
+            /// How often the SimplexIteration event should be called.
+            /// </summary>
+            public TimeSpan UpdatePeriod = TimeSpan.FromSeconds(1);
+        }
+
+        public Configuration Config;
+
+        public NelderMead(Configuration config = null)
+        {
+            this.Config = config ?? new Configuration();
+        }
 
         public class SimplexIterationEventArgs : EventArgs
         {
@@ -67,14 +77,16 @@ namespace Easy3D.Numerics
             public readonly int FunctionCount;
             public readonly double dF;
             public readonly double Error;
+            public bool FinalUpdate;
             public bool Cancel = false;
 
-            public SimplexIterationEventArgs(BinaryHeap<SimplexPoint> x, int functionCount, double df, double error)
+            public SimplexIterationEventArgs(BinaryHeap<SimplexPoint> x, int functionCount, double df, double error, bool finalUpdate = false)
             {
                 this.x = x;
                 this.FunctionCount = functionCount;
                 this.dF = df;
                 this.Error = error;
+                this.FinalUpdate = finalUpdate;
             }
         }
 
@@ -140,7 +152,7 @@ namespace Easy3D.Numerics
             SimplexPoint x1 = null; //Always points to member of x with lowest function value (best simplex point)
             int n = initialvalues.Length; //Number of optimization dimensions (there are n+1 simplex points)
             int fcount = 0; //Cumulative number of function evaluations performed so far
-            DateTime nextupdate = DateTime.UtcNow + this.UpdatePeriod;
+            DateTime nextupdate = DateTime.UtcNow + Config.UpdatePeriod;
 
             //Create initial simplex
             SimplexPoint newsp = new SimplexPoint(initialvalues.Duplicate(), f(initialvalues));
@@ -187,7 +199,7 @@ namespace Easy3D.Numerics
                 //Reflection operation
                 for (int d = 0; d <= n - 1; d++)
                 {
-                    xr.x[d] = x0[d] + this.Alpha * (x0[d] - xn1.x[d]);
+                    xr.x[d] = x0[d] + Config.Alpha * (x0[d] - xn1.x[d]);
                 }
                 xr.fx = f(xr.x);
 
@@ -196,7 +208,7 @@ namespace Easy3D.Numerics
                     //The reflected point is the best so far; perform expansion
                     for (int d = 0; d <= n - 1; d++)
                     {
-                        xe.x[d] = x0[d] + this.Gamma * (x0[d] - xn1.x[d]);
+                        xe.x[d] = x0[d] + Config.Gamma * (x0[d] - xn1.x[d]);
                     }
                     xe.fx = f(xe.x);
                     fcount += 1;
@@ -223,7 +235,7 @@ namespace Easy3D.Numerics
                     //The reflected point isn't better than the second-worst; perform contraction
                     for (int d = 0; d <= n - 1; d++)
                     {
-                        xc.x[d] = x0[d] + this.Rho * (x0[d] - xn1.x[d]);
+                        xc.x[d] = x0[d] + Config.Rho * (x0[d] - xn1.x[d]);
                     }
                     xc.fx = f(xc.x);
                     fcount += 1;
@@ -252,7 +264,7 @@ namespace Easy3D.Numerics
                             {
                                 for (int d = 0; d <= n - 1; d++)
                                 {
-                                    xi.x[d] = x0[d] + this.Sigma * (x0[d] - xn1.x[d]);
+                                    xi.x[d] = x0[d] + Config.Sigma * (x0[d] - xn1.x[d]);
                                 }
                                 xi.fx = f(xi.x);
                                 if (xi.fx < newx1.fx)
@@ -281,13 +293,19 @@ namespace Easy3D.Numerics
                         {
                             break;
                         }
-                        if (this.UpdatePeriod > TimeSpan.Zero)
+                        if (Config.UpdatePeriod > TimeSpan.Zero)
                         {
-                            nextupdate = nextupdate.AddSeconds((Math.Ceiling((DateTime.UtcNow - nextupdate).TotalSeconds / this.UpdatePeriod.TotalSeconds)) * this.UpdatePeriod.TotalSeconds);
+                            nextupdate = nextupdate.AddSeconds((Math.Ceiling((DateTime.UtcNow - nextupdate).TotalSeconds / Config.UpdatePeriod.TotalSeconds)) * Config.UpdatePeriod.TotalSeconds);
                         }
                     }
                 }
-            } while (!(fcount >= this.MaximumFunctionEvaluations || (df < 0 && df > -this.ConvergenceTolerance)));
+            } while (!(fcount >= Config.MaximumFunctionEvaluations || (df < 0 && df > -Config.ConvergenceTolerance)));
+
+            if (this.SimplexIteration != null)
+            {
+                var e = new SimplexIterationEventArgs(x, fcount, df, x1.fx, true);
+                this.SimplexIteration?.Invoke(this, e);
+            }
 
             return x1.x;
         }

@@ -137,6 +137,13 @@
     <Compile Include="UI\Main.Designer.cs">
       <DependentUpon>Main.cs</DependentUpon>
     </Compile>
+    <Compile Include="UI\Scenes\LocatedSceneEventArgs.cs" />
+    <Compile Include="UI\Scenes\SceneSolveTracker.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="UI\Scenes\SceneSolveTracker.Designer.cs">
+      <DependentUpon>SceneSolveTracker.cs</DependentUpon>
+    </Compile>
     <Compile Include="UI\Scenes\SceneView.cs">
       <SubType>UserControl</SubType>
     </Compile>
@@ -223,6 +230,9 @@
     </EmbeddedResource>
     <EmbeddedResource Include="UI\Images\ReferenceImageViewer.resx">
       <DependentUpon>ReferenceImageViewer.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="UI\Scenes\SceneSolveTracker.resx">
+      <DependentUpon>SceneSolveTracker.cs</DependentUpon>
     </EmbeddedResource>
     <None Include="OpenTK.dll.config" />
     <None Include="packages.config" />

@@ -129,5 +129,10 @@ namespace Easy3D.Projection
 
             return lcam;
         }
+
+        public static LocatedCamera Create(CameraIntrinsics intrinsics, CameraOrientation orientation, Vector3d position)
+        {
+            return new LocatedCamera(intrinsics, orientation.rvec, CameraTools.tvecFromCameraPosition(orientation.m, position));
+        }
     }
 }

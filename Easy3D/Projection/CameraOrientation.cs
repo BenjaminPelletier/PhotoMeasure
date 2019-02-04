@@ -14,6 +14,11 @@ namespace Easy3D.Projection
         public readonly Vector3d vAxis;
         public readonly Vector3d opticAxis;
 
+        /// <summary>
+        /// Create a CameraOrientation by defining the u and v axes explicitly.
+        /// </summary>
+        /// <param name="uAxis">Vector pointing from left to right on the image.</param>
+        /// <param name="vAxis">Vector pointing from top to bottom on the image.</param>
         public CameraOrientation(Vector3d uAxis, Vector3d vAxis)
         {
             this.uAxis = uAxis.Normalized();

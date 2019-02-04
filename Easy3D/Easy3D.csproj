@@ -104,6 +104,8 @@
     <Compile Include="Scenes\LocatedView.cs" />
     <Compile Include="Scenes\Observations\PointObservation.cs" />
     <Compile Include="Scenes\Scene.cs" />
+    <Compile Include="Scenes\LocatedSceneMaker.cs" />
+    <Compile Include="Scenes\SceneSolver.cs" />
     <Compile Include="Scenes\Solver.cs" />
     <Compile Include="Scenes\View.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
