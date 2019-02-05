@@ -211,6 +211,10 @@ namespace PhotoMeasure.UI
                 int i = 0;
                 foreach (CalibrationImage calImg in calImgs)
                 {
+                    if (calImg.Corners == null)
+                    {
+                        continue;
+                    }
                     Vector3d[] pts3d = CameraIntrinsics.ChessboardPoints(SIZE);
                     LocatedCamera lcam0 = new LocatedCamera(Intrinsics, rvecs[i].ToArray(), tvecs[i].ToArray());
                     LocatedCamera lcam = LocatedCamera.Create(Intrinsics, pts3d, calImg.Corners);

@@ -8,7 +8,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Easy3D.Scenes
+namespace Easy3D.Scenes.Solving
 {
     /// <summary>
     /// Creates a LocatedScene from an sequence of double values.

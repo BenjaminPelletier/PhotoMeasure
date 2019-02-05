@@ -9,13 +9,14 @@ using System.Threading.Tasks;
 using System.Windows.Forms;
 using Easy3D.Scenes;
 using Easy3D.Numerics;
+using Easy3D.Scenes.Solving;
 
 namespace PhotoMeasure.UI.Scenes
 {
     public partial class SceneSolveTracker : UserControl
     {
         private SceneSolver _Solver = new SceneSolver();
-        private NelderMead.Configuration _Config = new NelderMead.Configuration();
+        private NelderMeadConfiguration _Config = new NelderMeadConfiguration();
 
         public event EventHandler<LocatedSceneEventArgs> SceneChanged;
 
@@ -36,7 +37,14 @@ namespace PhotoMeasure.UI.Scenes
             cancelToolStripMenuItem.Enabled = true;
             pbProgress.Visible = true;
             pbProgress.Value = (int)(100 * Math.Min((float)e.SimplexIteration.FunctionCount / e.Solver.Config.MaximumFunctionEvaluations, 1));
-            lblMessage.Text = $"Error: {e.SimplexIteration.Error:f2} pixels decreasing at {e.SimplexIteration.dF:f5}, {e.SimplexIteration.FunctionCount} evaluations";
+            string decreasing = "";
+            if (e.SimplexIteration.dF != null)
+            {
+                double df = e.SimplexIteration.dF.Item1.TotalError - e.SimplexIteration.dF.Item2.TotalError;
+                decreasing = $" decreasing at {df:f5}";
+            }
+            string improvement = e.SimplexIteration.NewBestSinceLastUpdate ? " with overall improvements" : " with no improvements";
+            lblMessage.Text = $"{e.SimplexIteration.Operation}: {e.SimplexIteration.Cost.TotalError:f2} pixels{decreasing}{improvement}, {e.SimplexIteration.FunctionCount} evaluations";
             SceneChanged?.Invoke(this, new LocatedSceneEventArgs(e.LocatedScene));
         }
 

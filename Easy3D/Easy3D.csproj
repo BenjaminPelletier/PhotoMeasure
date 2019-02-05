@@ -90,6 +90,7 @@
     <Compile Include="Geometry\GeometryExtensions.cs" />
     <Compile Include="Scenes\Constraints\CoplanarFeaturesConstraint.cs" />
     <Compile Include="Scenes\Constraints\DistanceBetweenTwoPointsConstraint.cs" />
+    <Compile Include="Scenes\Constraints\ISpatialRelationship.cs" />
     <Compile Include="Scenes\Features\Feature.cs" />
     <Compile Include="Projection\LocatedCamera.cs" />
     <Compile Include="Scenes\Features\IObservableFeature.cs" />
@@ -104,8 +105,8 @@
     <Compile Include="Scenes\LocatedView.cs" />
     <Compile Include="Scenes\Observations\PointObservation.cs" />
     <Compile Include="Scenes\Scene.cs" />
-    <Compile Include="Scenes\LocatedSceneMaker.cs" />
-    <Compile Include="Scenes\SceneSolver.cs" />
+    <Compile Include="Scenes\Solving\LocatedSceneMaker.cs" />
+    <Compile Include="Scenes\Solving\SceneSolver.cs" />
     <Compile Include="Scenes\Solver.cs" />
     <Compile Include="Scenes\View.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

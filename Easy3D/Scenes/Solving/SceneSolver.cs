@@ -7,17 +7,17 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Easy3D.Scenes
+namespace Easy3D.Scenes.Solving
 {
     public class SceneSolver
     {
         public class SceneSolveProgressEventArgs : EventArgs
         {
             public LocatedScene LocatedScene;
-            public NelderMead Solver;
-            public NelderMead.SimplexIterationEventArgs SimplexIteration;
+            public NelderMead<LocatedScene.Error> Solver;
+            public NelderMead<LocatedScene.Error>.SimplexIterationEventArgs SimplexIteration;
 
-            public SceneSolveProgressEventArgs(LocatedScene scene, NelderMead solver, NelderMead.SimplexIterationEventArgs iteration)
+            public SceneSolveProgressEventArgs(LocatedScene scene, NelderMead<LocatedScene.Error> solver, NelderMead<LocatedScene.Error>.SimplexIterationEventArgs iteration)
             {
                 this.LocatedScene = scene;
                 this.Solver = solver;
@@ -28,7 +28,7 @@ namespace Easy3D.Scenes
         private class SolveRequest
         {
             public Scene Scene;
-            public NelderMead.Configuration Config;
+            public NelderMeadConfiguration Config;
         }
 
         private BackgroundWorker _Worker;
@@ -46,7 +46,7 @@ namespace Easy3D.Scenes
             _Worker.DoWork += this.DoWork;
         }
 
-        public void StartSolving(Scene scene, NelderMead.Configuration config)
+        public void StartSolving(Scene scene, NelderMeadConfiguration config)
         {
             if (_Worker.IsBusy)
             {
@@ -70,20 +70,8 @@ namespace Easy3D.Scenes
             SolveRequest request = e.Argument as SolveRequest;
             Scene scene = request.Scene;
 
-            var solver = new NelderMead(request.Config);
+            var solver = new NelderMead<LocatedScene.Error>(request.Config);
             var sceneMaker = new LocatedSceneMaker(scene);
-
-            Func<double[], double> errorFunction = p =>
-            {
-                double errSum = 0;
-                LocatedScene locatedScene = sceneMaker.MakeScene(p);
-                double[] errorVector = locatedScene.ErrorVector.ToArray();
-                foreach (double err in errorVector)
-                {
-                    errSum += err * err;
-                }
-                return Math.Sqrt(errSum / errorVector.Length);
-            };
 
             solver.SimplexIteration += (solverSender, iterationArgs) =>
             {
@@ -91,7 +79,7 @@ namespace Easy3D.Scenes
                 iterationArgs.Cancel = worker.CancellationPending;
             };
 
-            double[] bestParameters = solver.FindMinimum(errorFunction, sceneMaker.GetInitialGuess().ToArray(), 0.1);
+            double[] bestParameters = solver.FindMinimum(p => sceneMaker.MakeScene(p).GetError(scene.Constraints), sceneMaker.GetInitialGuess().ToArray(), 0.1);
 
             e.Result = sceneMaker.MakeScene(bestParameters);
         }
@@ -100,7 +88,7 @@ namespace Easy3D.Scenes
         {
             var progressArgs = e.UserState as SceneSolveProgressEventArgs;
             SceneSolveProgress?.Invoke(this, progressArgs);
-            if (progressArgs.SimplexIteration.FinalUpdate)
+            if (progressArgs.SimplexIteration.Operation == SimplexOperation.Complete)
             {
                 SceneSolved?.Invoke(this, progressArgs);
             }

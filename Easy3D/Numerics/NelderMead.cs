@@ -7,86 +7,94 @@ using System.Threading.Tasks;
 
 namespace Easy3D.Numerics
 {
+    public class NelderMeadConfiguration
+    {
+        /// <summary>
+        /// Reflection coefficient: determines how far across the center of the simplex the worst point is reflected to perform a new function evaluation
+        /// Reasonable range: (0, Infinity)
+        /// A value of 0 moves the worst point to the center of the remaining simplex every reflection step
+        /// A value of less than 1 performs a contraction concurrently with every reflection step
+        /// A value of 1 performs a standard reflection of the worst point to the other side of the remaining simplex
+        /// A value of greater than 1 performs an expansion concurrently with every reflection step
+        /// </summary>
+        public double Alpha = 1;
+
+        /// <summary>
+        /// Expansion coefficient: determines how far across the center of the simplex the worst point is reflected when the standard reflection yields the lowest function value yet
+        /// Reasonable range: [1, Infinity)
+        /// A value of 1 performs no additional expansion beyond a simple reflection when a desirable direction is discovered
+        /// </summary>
+        public double Gamma = 2;
+
+        /// <summary>
+        /// Contraction coefficient: determines how far across the center of the simplex the worst point is reflected when the standard reflection does not yield the lowest function value yet
+        /// Reasonable range: (-1, 0)
+        /// A value of -1 leaves the worst simplex point where it is during a contraction step
+        /// A value of 0 moves the worst simplex point to the center of the remaining simplex during a contraction operation
+        /// </summary>
+        public double Rho = -0.5;
+
+        /// <summary>
+        /// Reduction coefficient: determines how far away from the best point all other points are moved when standard reflection and contraction both fail to produce a function value lower than the worst function value
+        /// Reasonable range: (0, 1)
+        /// A value of 0 forces all simplex points to the best point in one reduction step
+        /// A value of 1 leaves all simplex points unchanged during the reduction operation
+        /// </summary>
+        public double Sigma = 0.5;
+
+        /// <summary>
+        /// Approximate maximum number of times the cost function may be evaluated before the optimization will terminate
+        /// </summary>
+        public int MaximumFunctionEvaluations = 10000;
+
+        /// <summary>
+        /// How often the SimplexIteration event should be called.
+        /// </summary>
+        public TimeSpan UpdatePeriod = TimeSpan.FromSeconds(1);
+    }
+
+    public enum SimplexOperation
+    {
+        Reflection,
+        Expansion,
+        Contraction,
+        Reduction,
+        Complete,
+    }
+
     /// <summary>
     /// Nelder-Mead Simplex solver based on description at http://en.wikipedia.org/wiki/Nelder-Mead_method
     /// </summary>
     /// <remarks></remarks>
-    public class NelderMead
+    public class NelderMead<TCost> where TCost : IComparable<TCost>
     {
-        public class Configuration
+        public NelderMeadConfiguration Config;
+
+        public NelderMead(NelderMeadConfiguration config = null)
         {
-            /// <summary>
-            /// Reflection coefficient: determines how far across the center of the simplex the worst point is reflected to perform a new function evaluation
-            /// Reasonable range: (0, Infinity)
-            /// A value of 0 moves the worst point to the center of the remaining simplex every reflection step
-            /// A value of less than 1 performs a contraction concurrently with every reflection step
-            /// A value of 1 performs a standard reflection of the worst point to the other side of the remaining simplex
-            /// A value of greater than 1 performs an expansion concurrently with every reflection step
-            /// </summary>
-            public double Alpha = 1;
-
-            /// <summary>
-            /// Expansion coefficient: determines how far across the center of the simplex the worst point is reflected when the standard reflection yields the lowest function value yet
-            /// Reasonable range: [1, Infinity)
-            /// A value of 1 performs no additional expansion beyond a simple reflection when a desirable direction is discovered
-            /// </summary>
-            public double Gamma = 2;
-
-            /// <summary>
-            /// Contraction coefficient: determines how far across the center of the simplex the worst point is reflected when the standard reflection does not yield the lowest function value yet
-            /// Reasonable range: (-1, 0)
-            /// A value of -1 leaves the worst simplex point where it is during a contraction step
-            /// A value of 0 moves the worst simplex point to the center of the remaining simplex during a contraction operation
-            /// </summary>
-            public double Rho = -0.5;
-
-            /// <summary>
-            /// Reduction coefficient: determines how far away from the best point all other points are moved when standard reflection and contraction both fail to produce a function value lower than the worst function value
-            /// Reasonable range: (0, 1)
-            /// A value of 0 forces all simplex points to the best point in one reduction step
-            /// A value of 1 leaves all simplex points unchanged during the reduction operation
-            /// </summary>
-            public double Sigma = 0.5;
-
-            /// <summary>
-            /// Approximate maximum number of times the fitness function may be evaluated before the optimization will terminate
-            /// </summary>
-            public int MaximumFunctionEvaluations = 10000;
-
-            /// <summary>
-            /// When a simplex iteration leads to a change in the fitness function smaller than this value, the optimization will terminate
-            /// </summary>
-            public double ConvergenceTolerance = 1E-06;
-
-            /// <summary>
-            /// How often the SimplexIteration event should be called.
-            /// </summary>
-            public TimeSpan UpdatePeriod = TimeSpan.FromSeconds(1);
-        }
-
-        public Configuration Config;
-
-        public NelderMead(Configuration config = null)
-        {
-            this.Config = config ?? new Configuration();
+            this.Config = config ?? new NelderMeadConfiguration();
         }
 
         public class SimplexIterationEventArgs : EventArgs
         {
+            public readonly SimplexOperation Operation;
+            public readonly bool NewBest;
+            public readonly bool NewBestSinceLastUpdate;
             public readonly BinaryHeap<SimplexPoint> x;
             public readonly int FunctionCount;
-            public readonly double dF;
-            public readonly double Error;
-            public bool FinalUpdate;
+            public readonly Tuple<TCost, TCost> dF;
+            public readonly TCost Cost;
             public bool Cancel = false;
 
-            public SimplexIterationEventArgs(BinaryHeap<SimplexPoint> x, int functionCount, double df, double error, bool finalUpdate = false)
+            public SimplexIterationEventArgs(BinaryHeap<SimplexPoint> x, SimplexOperation operation, bool newBest, bool newBestSinceLastUpdate, int functionCount, Tuple<TCost, TCost> df, TCost cost)
             {
                 this.x = x;
+                this.Operation = operation;
+                this.NewBest = newBest;
+                this.NewBestSinceLastUpdate = newBestSinceLastUpdate;
                 this.FunctionCount = functionCount;
                 this.dF = df;
-                this.Error = error;
-                this.FinalUpdate = finalUpdate;
+                this.Cost = cost;
             }
         }
 
@@ -97,8 +105,8 @@ namespace Easy3D.Numerics
 
             public double[] x;
 
-            public double fx;
-            public SimplexPoint(double[] x, double fx = double.NaN)
+            public TCost fx;
+            public SimplexPoint(double[] x, TCost fx)
             {
                 this.x = x;
                 this.fx = fx;
@@ -106,18 +114,7 @@ namespace Easy3D.Numerics
 
             public int CompareTo(SimplexPoint other)
             {
-                if (this.fx > other.fx)
-                {
-                    return -1;
-                }
-                else if (this.fx < other.fx)
-                {
-                    return 1;
-                }
-                else
-                {
-                    return 0;
-                }
+                return this.fx.CompareTo(other.fx);
             }
 
             public override string ToString()
@@ -131,7 +128,7 @@ namespace Easy3D.Numerics
             }
         }
 
-        public double[] FindMinimum(Func<double[], double> f, double[] initialvalues, double initialsimplexsidelengths = 1)
+        public double[] FindMinimum(Func<double[], TCost> f, double[] initialvalues, double initialsimplexsidelengths = 1)
         {
             double[] initialsimplexsides = new double[initialvalues.Length];
             for (int i = 0; i <= initialsimplexsides.Length - 1; i++)
@@ -141,18 +138,19 @@ namespace Easy3D.Numerics
             return FindMinimum(f, initialvalues, initialsimplexsides, CancellationToken.None);
         }
 
-        public double[] FindMinimum(Func<double[], double> f, double[] initialvalues, double[] initialsimplexsides)
+        public double[] FindMinimum(Func<double[], TCost> f, double[] initialvalues, double[] initialsimplexsides)
         {
             return FindMinimum(f, initialvalues, initialsimplexsides, CancellationToken.None);
         }
 
-        public double[] FindMinimum(Func<double[], double> f, double[] initialvalues, double[] initialsimplexsides, CancellationToken token)
+        public double[] FindMinimum(Func<double[], TCost> f, double[] initialvalues, double[] initialsimplexsides, CancellationToken token)
         {
-            BinaryHeap<SimplexPoint> x = new BinaryHeap<SimplexPoint>(); //Collection of all simplex points; point with highest function value is always quickly [O(log(n))] available
+            var x = new BinaryHeap<SimplexPoint>(); //Collection of all simplex points; point with highest function value is always quickly [O(log(n))] available
             SimplexPoint x1 = null; //Always points to member of x with lowest function value (best simplex point)
             int n = initialvalues.Length; //Number of optimization dimensions (there are n+1 simplex points)
             int fcount = 0; //Cumulative number of function evaluations performed so far
             DateTime nextupdate = DateTime.UtcNow + Config.UpdatePeriod;
+            bool newBestSinceLastUpdate = false;
 
             //Create initial simplex
             SimplexPoint newsp = new SimplexPoint(initialvalues.Duplicate(), f(initialvalues));
@@ -165,21 +163,24 @@ namespace Easy3D.Numerics
                 newpoint[d] += initialsimplexsides[d];
                 newsp = new SimplexPoint(newpoint, f(newpoint));
                 x.Push(newsp);
-                if (newsp.fx < x1.fx)
+                if (newsp.fx.CompareTo(x1.fx) < 0)
                     x1 = newsp;
             }
             fcount = n + 1;
 
             //Simplex improvement loop
-            SimplexPoint xr = new SimplexPoint(initialvalues.Duplicate());
-            SimplexPoint xe = new SimplexPoint(initialvalues.Duplicate());
-            SimplexPoint xc = new SimplexPoint(initialvalues.Duplicate());
+            SimplexPoint xr = new SimplexPoint(initialvalues.Duplicate(), default(TCost));
+            SimplexPoint xe = new SimplexPoint(initialvalues.Duplicate(), default(TCost));
+            SimplexPoint xc = new SimplexPoint(initialvalues.Duplicate(), default(TCost));
             SimplexPoint xi = null;
             double[] x0 = new double[initialvalues.Length];
-            double df = 0;
 
             do
             {
+                Tuple<TCost, TCost> df = null; //How much we changed the cost of the affected point during this iteration
+                SimplexOperation operation; //The operation we performed on the simplex during this iteration
+                bool newBest = false;
+
                 //Grab the worst (xn1) and second worst (xn) simplex points, and remove the worst point from the simplex
                 SimplexPoint xn1 = x.Pop();
                 SimplexPoint xn = x.Peek();
@@ -203,9 +204,10 @@ namespace Easy3D.Numerics
                 }
                 xr.fx = f(xr.x);
 
-                if (xr.fx < x1.fx)
+                if (xr.fx.CompareTo(x1.fx) < 0)
                 {
                     //The reflected point is the best so far; perform expansion
+                    newBest = true;
                     for (int d = 0; d <= n - 1; d++)
                     {
                         xe.x[d] = x0[d] + Config.Gamma * (x0[d] - xn1.x[d]);
@@ -213,24 +215,24 @@ namespace Easy3D.Numerics
                     xe.fx = f(xe.x);
                     fcount += 1;
 
-                    if (xe.fx < xr.fx)
+                    if (xe.fx.CompareTo(xr.fx) < 0)
                     {
                         x.Push(xe); //Expanded point is better than reflected point; use it to replace worst point
-                        //Debug.Print("Expansion (new best): " & xn1.ToString & " -> " & xe.ToString)
+                        operation = SimplexOperation.Expansion;
                         x1 = xe; //Update the best simplex point
-                        df = xe.fx - xn1.fx; //Record how much we improved this simplex point's function value this iteration
+                        df = new Tuple<TCost, TCost>(xe.fx, xn1.fx); //Record how much we improved this simplex point's function value this iteration
                         xe = xn1; //Reuse existing SimplexPoint object
                     }
                     else
                     {
                         x.Push(xr); //Expanded point isn't better than reflected point; use reflected point to replace worst point
-                        //Debug.Print("Reflection (new best): " & xn1.ToString & " -> " & xr.ToString)
+                        operation = SimplexOperation.Reflection;
                         x1 = xr; //Update the best simplex point
-                        df = xr.fx - xn1.fx; //Record how much we improved this simplex point's function value this iteration
+                        df = new Tuple<TCost, TCost>(xr.fx, xn1.fx); //Record how much we improved this simplex point's function value this iteration
                         xr = xn1; //Reuse existing SimplexPoint object
                     }
                 }
-                else if (xr.fx >= xn.fx)
+                else if (xr.fx.CompareTo(xn.fx) >= 0)
                 {
                     //The reflected point isn't better than the second-worst; perform contraction
                     for (int d = 0; d <= n - 1; d++)
@@ -240,22 +242,20 @@ namespace Easy3D.Numerics
                     xc.fx = f(xc.x);
                     fcount += 1;
 
-                    if (xc.fx < xn1.fx)
+                    if (xc.fx.CompareTo(xn1.fx) < 0)
                     {
-                        //Contracted point is better than the worst point; replace worst point with contracted point
-                        x.Push(xc);
-                        //Debug.Print("Contraction: " & xn1.ToString & " -> " & xc.ToString)
-                        if (xc.fx < x1.fx)
+                        x.Push(xc); //Contracted point is better than the worst point; replace worst point with contracted point
+                        operation = SimplexOperation.Contraction;
+                        if (xc.fx.CompareTo(x1.fx) < 0)
                             x1 = xc; //Update the best simplex point if appropriate
-                        df = xc.fx - xn1.fx; //Record how much we improved this simplex point's function value this iteration
+                        df = new Tuple<TCost, TCost>(xc.fx, xn1.fx); //Record how much we improved this simplex point's cost this iteration
                         xc = xn1; //Reuse existing SimplexPoint object
                     }
                     else
                     {
                         //Reduction operation; move all points toward the best point
+                        operation = SimplexOperation.Reduction;
                         x.Push(xn1); //Put the worst simplex point back in the simplex
-                        //Debug.Print("Reduction")
-                        //Throw New NotImplementedException("This part of the NelderMead implementation has not yet been checked for accuracy")
                         SimplexPoint newx1 = x1;
                         for (int i = 0; i <= n; i++)
                         {
@@ -267,7 +267,7 @@ namespace Easy3D.Numerics
                                     xi.x[d] = x0[d] + Config.Sigma * (x0[d] - xn1.x[d]);
                                 }
                                 xi.fx = f(xi.x);
-                                if (xi.fx < newx1.fx)
+                                if (xi.fx.CompareTo(newx1.fx) < 0)
                                     newx1 = xi;
                             }
                         }
@@ -278,16 +278,21 @@ namespace Easy3D.Numerics
                 else
                 {
                     x.Push(xr); //Simple reflection improves this point (xn1) but doesn't make it the new best point; use the reflection as the new simplex point
-                    //Debug.Print("Reflection: " & xn1.ToString & " -> " & xr.ToString)
-                    df = xr.fx - xn1.fx; //Record how much we improved this simplex point's function value this iteration
+                    operation = SimplexOperation.Reflection;
                     xr = xn1; //Reuse existing SimplexPoint object
+                }
+
+                if (newBest)
+                {
+                    newBestSinceLastUpdate = true;
                 }
 
                 if (this.SimplexIteration != null)
                 {
                     if (DateTime.UtcNow > nextupdate)
                     {
-                        var e = new SimplexIterationEventArgs(x, fcount, df, x.Peek().fx);
+                        var e = new SimplexIterationEventArgs(x, operation, newBest, newBestSinceLastUpdate, fcount, df, x.Peek().fx);
+                        newBestSinceLastUpdate = false;
                         this.SimplexIteration?.Invoke(this, e);
                         if (e.Cancel)
                         {
@@ -299,11 +304,11 @@ namespace Easy3D.Numerics
                         }
                     }
                 }
-            } while (!(fcount >= Config.MaximumFunctionEvaluations || (df < 0 && df > -Config.ConvergenceTolerance)));
+            } while (!(fcount >= Config.MaximumFunctionEvaluations));
 
             if (this.SimplexIteration != null)
             {
-                var e = new SimplexIterationEventArgs(x, fcount, df, x1.fx, true);
+                var e = new SimplexIterationEventArgs(x, SimplexOperation.Complete, false, newBestSinceLastUpdate, fcount, null, x1.fx);
                 this.SimplexIteration?.Invoke(this, e);
             }
 
@@ -312,20 +317,9 @@ namespace Easy3D.Numerics
     }
 
 
-    public class BinaryHeap<T>
+    public class BinaryHeap<T> where T : IComparable<T>
     {
-        private IComparer<T> mComparer;
-
         private List<T> Items = new List<T>();
-        public BinaryHeap()
-            : this(Comparer<T>.Default)
-        {
-        }
-
-        public BinaryHeap(IComparer<T> comparer)
-        {
-            this.mComparer = comparer;
-        }
 
         /// <summary>
         /// Get a count of the number of items in the collection.
@@ -365,7 +359,7 @@ namespace Easy3D.Numerics
         {
             int i = Count;
             Items.Add(newItem);
-            while (i > 0 && mComparer.Compare(Items[(i - 1) / 2], newItem) > 0)
+            while (i > 0 && Items[(i - 1) / 2].CompareTo(newItem) < 0)
             {
                 Items[i] = Items[(i - 1) / 2];
                 i = (i - 1) / 2;
@@ -405,9 +399,9 @@ namespace Easy3D.Numerics
                 while (parent < Items.Count / 2)
                 {
                     int child = parent + parent + 1;
-                    if ((child < Items.Count - 1) && (mComparer.Compare(Items[child], Items[child + 1]) > 0))
+                    if ((child < Items.Count - 1) && (Items[child].CompareTo(Items[child + 1]) < 0))
                         child += 1;
-                    if (mComparer.Compare(Items[child], oldbottom) >= 0)
+                    if (Items[child].CompareTo(oldbottom) <= 0)
                         break;
                     Items[parent] = Items[child];
                     parent = child;
